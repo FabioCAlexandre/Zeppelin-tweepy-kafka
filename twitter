@@ -1,0 +1,51 @@
+from kafka import SimpleProducer, KafkaClient
+import tweepy
+import kafka
+import sys
+from tweepy.streaming import StreamListener
+from tweepy import OAuthHandler
+from tweepy import Stream
+import re
+from textblob import TextBlob
+
+consumer_key = "4C9XuGdKEcvfG9fZPcjyar1NP"
+consumer_secret = "lu8nFVfy87woo273WnaVCB6MBkatKaWViEHFvUaeFBkaKzIia9"
+access_token = "273453291-DfTE0kemPwwaERIOIDVXRBeIh6YvrbMgwxWX2y1k"
+access_token_secret = "bga4nmXCWjAL41goclFuYjR6p9ZpGWFumvY5bJ3RzcnKG"
+auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+auth.set_access_token(access_token, access_token_secret)
+api = tweepy.API(auth)
+    
+def clean_tweet(self, tweet):
+    return " ".join(re.sub("(@[A-Za-z0-9]+)|([^0-9A-Za-z \t]) |(\w+:\/\/\S+)", " ", tweet).split())
+
+    #le os twitters
+class CustomStreamListener(tweepy.StreamListener):
+    
+    def clean_tweet(self, tweet):
+        return " ".join(re.sub("(@[A-Za-z0-9]+)|([^0-9A-Za-z \t]) |(\w+:\/\/\S+)", " ", tweet).split())
+        
+    def on_status(self, status):
+        producer.send_messages(topic, status.text.encode('utf-8'))
+        twitterText = clean_tweet(self,status.text)
+        #twitterText = status.text
+        analysis = TextBlob(twitterText)
+        if analysis.sentiment.polarity > 0:
+            sentiment = 'positive'
+        elif analysis.sentiment.polarity == 0:
+            sentiment = 'neutral'
+        else:
+            sentiment = 'negative'
+        
+        print (status.author.screen_name, status.created_at, twitterText,sentiment)
+        return True
+    def on_error(self, status):
+        print (status)
+
+    #conecta no kafka
+kafka = KafkaClient('192.168.234.152:9092')
+producer=SimpleProducer(kafka)
+topic = 'Trump'
+streaming = tweepy.streaming.Stream(auth, CustomStreamListener())
+
+streaming.filter(track=['Trump'])
